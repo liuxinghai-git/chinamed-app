@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ChinaMed Concierge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- 导航与Banner省略，保持原样优化视觉 -->
+        <nav class="bg-white/90 backdrop-blur sticky top-0 z-40 border-b border-gray-100 p-4">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="text-xl font-bold text-blue-600"><i class="fa-solid fa-staff-snake mr-2"></i>ChinaMed</div>
+                <div class="text-xs text-gray-500">Trial Version</div>
+            </div>
+        </nav>
+        
+        <div class="bg-blue-900 h-64 flex items-center justify-center text-center px-4 relative overflow-hidden">
+            <h1 class="text-3xl text-white font-bold relative z-10">Premium Medical Care in China</h1>
+        </div>
+
+        <!-- 搜索 -->
+        <div class="max-w-7xl mx-auto px-4 -mt-6 relative z-30">
+            <div class="bg-white rounded-xl shadow-lg p-4 flex gap-4 border border-gray-100">
+                <select v-model="selectedCity" @change="fetchDoctors" class="w-full p-3 rounded-lg bg-gray-50 border outline-none">
+                    <option value="All">All Cities</option>
+                    <option value="Beijing">Beijing</option>
+                    <option value="Shanghai">Shanghai</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 列表 -->
+        <main class="max-w-7xl mx-auto px-4 py-8 w-full flex-1">
+            <div v-if="loading" class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-blue-500"></i></div>
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="doc in doctors" :key="doc.id" class="bg-white rounded-xl shadow-sm border p-4 flex flex-col">
+                    <div class="flex gap-4 mb-4">
+                        <img :src="doc.image_url" class="w-16 h-16 rounded-lg object-cover bg-gray-200">
+                        <div>
+                            <h3 class="font-bold">{{ doc.name }}</h3>
+                            <p class="text-sm text-gray-500">{{ doc.hospital }}</p>
+                            <span class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded mt-1 inline-block">{{ doc.specialty }}</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 line-clamp-2 mb-4 flex-1">{{ doc.description }}</p>
+                    <button @click="openBooking(doc)" class="w-full bg-blue-600 text-white py-2 rounded-lg font-medium">Request ($15)</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 弹窗 -->
+        <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div class="bg-white rounded-xl w-full max-w-md p-6">
+                <h2 class="text-xl font-bold mb-4">Book {{ currentDoc.name }}</h2>
+                <form @submit.prevent="submitBooking" class="space-y-3">
+                    <input v-model="form.patient_name" placeholder="Name" required class="w-full border p-2 rounded">
+                    <input v-model="form.contact" placeholder="Contact Info" required class="w-full border p-2 rounded">
+                    <input v-model="form.date" type="date" required class="w-full border p-2 rounded">
+                    <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold mt-2">Confirm Request</button>
+                    <button type="button" @click="showModal = false" class="w-full text-gray-500 py-2">Cancel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        // ⚠️【重要】部署后，将下方引号内容换成你 Render 的网址
+        // 例如: const API_BASE_URL = "https://chinamed-api.onrender.com";
+        // 本地测试请保持: http://localhost:10000
+        const API_BASE_URL = "http://localhost:10000"; 
+
+        createApp({
+            setup() {
+                const doctors = ref([]);
+                const loading = ref(true);
+                const selectedCity = ref('All');
+                const showModal = ref(false);
+                const currentDoc = ref({});
+                const form = ref({});
+
+                const fetchDoctors = async () => {
+                    loading.value = true;
+                    try {
+                        const res = await axios.get(`${API_BASE_URL}/api/doctors?city=${selectedCity.value}`);
+                        doctors.value = res.data;
+                    } catch(e) { console.error(e); } 
+                    finally { loading.value = false; }
+                };
+
+                const openBooking = (doc) => { currentDoc.value = doc; showModal.value = true; };
+                
+                const submitBooking = async () => {
+                    try {
+                        await axios.post(`${API_BASE_URL}/api/book`, { doctor_id: currentDoc.value.id, ...form.value });
+                        alert("Request Sent!"); showModal.value = false; form.value = {};
+                    } catch (e) { alert("Error"); }
+                };
+
+                onMounted(fetchDoctors);
+                return { doctors, loading, selectedCity, fetchDoctors, showModal, currentDoc, openBooking, form, submitBooking };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

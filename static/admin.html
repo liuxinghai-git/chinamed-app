@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div id="app" class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">Admin Panel</h1>
+        
+        <div v-if="!isLoggedIn" class="bg-white p-6 rounded shadow max-w-sm mx-auto">
+            <input v-model="creds.username" placeholder="Username" class="w-full border p-2 mb-2 rounded">
+            <input v-model="creds.password" type="password" placeholder="Password" class="w-full border p-2 mb-4 rounded">
+            <button @click="login" class="w-full bg-blue-600 text-white py-2 rounded">Login</button>
+        </div>
+
+        <div v-else>
+            <!-- 添加医生表单 -->
+            <div class="bg-white p-6 rounded shadow mb-6">
+                <h2 class="font-bold mb-4">Add Doctor</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <input v-model="form.name" placeholder="Name" class="border p-2 rounded">
+                    <input v-model="form.hospital" placeholder="Hospital" class="border p-2 rounded">
+                    <input v-model="form.city" placeholder="City" class="border p-2 rounded">
+                    <input v-model="form.specialty" placeholder="Specialty" class="border p-2 rounded">
+                    <input v-model="form.languages" placeholder="Languages" class="border p-2 rounded">
+                    <input v-model="form.price" placeholder="Price" class="border p-2 rounded">
+                    <input v-model="form.image_url" placeholder="Image URL" class="border p-2 rounded w-full col-span-2">
+                    <textarea v-model="form.description" placeholder="Desc" class="border p-2 rounded w-full col-span-2"></textarea>
+                </div>
+                <button @click="addDoctor" class="mt-4 bg-green-600 text-white px-6 py-2 rounded">Add</button>
+            </div>
+
+            <!-- 订单列表 -->
+            <div class="bg-white p-6 rounded shadow">
+                <h2 class="font-bold mb-4 flex justify-between">Orders <button @click="fetchOrders" class="text-sm text-blue-500">Refresh</button></h2>
+                <ul>
+                    <li v-for="order in orders" :key="order.id" class="border-b py-2">
+                        <span class="font-bold">{{ order.patient_name }}</span> ({{ order.contact }}) requested 
+                        <span class="text-blue-600">{{ order.doctor_name }}</span> on {{ order.date }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+
+        // ⚠️【重要】部署后，换成 Render 的网址
+        const API_BASE_URL = "http://localhost:10000"; 
+
+        createApp({
+            setup() {
+                const isLoggedIn = ref(false);
+                const creds = ref({ username: 'admin', password: '' });
+                const token = ref(localStorage.getItem('token') || '');
+                const form = ref({});
+                const orders = ref([]);
+
+                if(token.value) isLoggedIn.value = true;
+
+                const api = axios.create({ baseURL: API_BASE_URL });
+                api.interceptors.request.use(config => {
+                    if(token.value) config.headers.Authorization = `Bearer ${token.value}`;
+                    return config;
+                });
+
+                const login = async () => {
+                    try {
+                        const res = await api.post('/api/login', creds.value);
+                        token.value = res.data.token;
+                        localStorage.setItem('token', token.value);
+                        isLoggedIn.value = true;
+                    } catch(e) { alert("Login Failed"); }
+                };
+
+                const addDoctor = async () => {
+                    try { await api.post('/api/admin/doctors', form.value); alert("Added!"); form.value = {}; } 
+                    catch(e) { alert("Failed"); }
+                };
+
+                const fetchOrders = async () => {
+                    try { const res = await api.get('/api/admin/orders'); orders.value = res.data; }
+                    catch(e) { console.error(e); }
+                };
+
+                return { isLoggedIn, creds, login, form, addDoctor, orders, fetchOrders };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
