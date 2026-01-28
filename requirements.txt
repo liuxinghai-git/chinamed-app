@@ -4,4 +4,6 @@ pydantic
 stripe
 python-multipart
 python-dotenv
-passlib[bcrypt]
+passlib
+bcrypt==4.0.1
+email-validator
