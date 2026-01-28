@@ -20,7 +20,19 @@ ADMIN_PASS_RAW = os.getenv("ADMIN_PASSWORD", "admin888")
 # 简单的 Token (正式上线建议用 JWT)
 SECRET_TOKEN = os.getenv("SECRET_TOKEN", "default-secret-token")
 
+#pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+#ADMIN_PASS_HASH = pwd_context.hash(ADMIN_PASS_RAW)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# --- 🔍 抓出真凶：打印出来看看它到底读到了什么 ---
+print(f"🚨 DEBUG: Password detected length: {len(ADMIN_PASS_RAW)}")
+# print(f"🚨 DEBUG: Content: {ADMIN_PASS_RAW}") # 如果想看具体内容可以取消注释，但注意不要泄露
+
+# --- 🛡️ 强制防御：如果太长，直接截断 ---
+if len(ADMIN_PASS_RAW) > 70:
+    print("⚠️ WARNING: Password too long! Truncating to 70 chars to prevent crash.")
+    ADMIN_PASS_RAW = ADMIN_PASS_RAW[:70]
+
 ADMIN_PASS_HASH = pwd_context.hash(ADMIN_PASS_RAW)
 
 app = FastAPI()
@@ -156,4 +168,5 @@ def get_orders():
 if __name__ == "__main__":
     import uvicorn
     # Render 默认使用端口 10000
+
     uvicorn.run(app, host="0.0.0.0", port=10000)
