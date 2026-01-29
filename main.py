@@ -26,7 +26,7 @@ if STRIPE_SECRET_KEY: stripe.api_key = STRIPE_SECRET_KEY
 
 ADMIN_PASS_RAW = os.getenv("ADMIN_PASSWORD", "admin888")
 SECRET_TOKEN = os.getenv("SECRET_TOKEN", "default-secret-token")
-DATABASE_URL = os.getenv("postgresql://chinamed_db_user:gJutVbfVbXOOis6w7R9syQAjHI9Nqq7e@dpg-d5to5f4oud1c73bq92dg-a/chinamed_db") # Render 会自动注入这个变量
+DATABASE_URL = os.getenv("DATABASE_URL") # Render 会自动注入这个变量
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # 密码截断保护
@@ -193,3 +193,4 @@ def get_orders():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=10000)
+
