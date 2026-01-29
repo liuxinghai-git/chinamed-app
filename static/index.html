@@ -48,7 +48,7 @@
                         </div>
                     </div>
                     <p class="text-sm text-gray-600 line-clamp-2 mb-4 flex-1">{{ doc.description }}</p>
-                    <button @click="openBooking(doc)" class="w-full bg-blue-600 text-white py-2 rounded-lg font-medium">Request ($15)</button>
+                    <button @click="openBooking(doc)" class="w-full bg-blue-600 text-white py-2 rounded-lg font-medium">Request (${{ doc.price }})</button>
                 </div>
             </div>
         </main>
@@ -68,47 +68,77 @@
         </div>
     </div>
 
-    <script>
-        const { createApp, ref, onMounted } = Vue;
+    <!-- 找到这一行 -->
+<script>
+    const { createApp, ref, onMounted } = Vue;
 
-        // ⚠️【重要】部署后，将下方引号内容换成你 Render 的网址
-        // 例如: const API_BASE_URL = "https://chinamed-api.onrender.com";
-        // 本地测试请保持: http://localhost:10000
-        const API_BASE_URL = "https://chinamed-app.onrender.com"; 
+    // 【注意】如果你是本地测试，用 localhost；如果是云端，用 Render 的网址
+    // const API_BASE_URL = "https://你的项目名.onrender.com";
+    const API_BASE_URL = "https://chinamed-app.onrender.com"; 
 
-        createApp({
-            setup() {
-                const doctors = ref([]);
-                const loading = ref(true);
-                const selectedCity = ref('All');
-                const showModal = ref(false);
-                const currentDoc = ref({});
-                const form = ref({});
+    createApp({
+        setup() {
+            const doctors = ref([]);
+            const loading = ref(true);
+            const selectedCity = ref('All');
+            const showModal = ref(false);
+            const currentDoc = ref({});
+            const form = ref({});
+            const step = ref(1);       // 1:填表, 2:支付, 3:成功
+            const processing = ref(false);
 
-                const fetchDoctors = async () => {
-                    loading.value = true;
-                    try {
-                        const res = await axios.get(`${API_BASE_URL}/api/doctors?city=${selectedCity.value}`);
-                        doctors.value = res.data;
-                    } catch(e) { console.error(e); } 
-                    finally { loading.value = false; }
-                };
+            const fetchDoctors = async () => {
+                loading.value = true;
+                try {
+                    const res = await axios.get(`${API_BASE_URL}/api/doctors?city=${selectedCity.value}`);
+                    doctors.value = res.data;
+                } catch(e) { console.error(e); } 
+                finally { loading.value = false; }
+            };
 
-                const openBooking = (doc) => { currentDoc.value = doc; showModal.value = true; };
-                
-                const submitBooking = async () => {
-                    try {
-                        await axios.post(`${API_BASE_URL}/api/book`, { doctor_id: currentDoc.value.id, ...form.value });
-                        alert("Request Sent!"); showModal.value = false; form.value = {};
-                    } catch (e) { alert("Error"); }
-                };
+            const openBooking = (doc) => { 
+                currentDoc.value = doc; 
+                step.value = 1; 
+                showModal.value = true; 
+            };
+            
+            const goToPayment = () => {
+                step.value = 2; // 进入支付页
+            };
 
-                onMounted(fetchDoctors);
-                return { doctors, loading, selectedCity, fetchDoctors, showModal, currentDoc, openBooking, form, submitBooking };
-            }
-        }).mount('#app');
-    </script>
+            const confirmBooking = async () => {
+                processing.value = true;
+                try {
+                    // 【核心修改点 1】: 金额不再是固定的 1500
+                    // Stripe 单位是“分”，所以要用 价格 * 100
+                    // 假设后台填的 Price 是 50 (美元)，这里传 5000
+                    const amountInCents = currentDoc.value.price * 100;
+
+                    // 1. 创建支付意向
+                    await axios.post(`${API_BASE_URL}/api/create-payment-intent`, { amount: amountInCents });
+                    
+                    // 2. 提交订单
+                    await axios.post(`${API_BASE_URL}/api/book`, { 
+                        doctor_id: currentDoc.value.id, 
+                        ...form.value 
+                    });
+
+                    step.value = 3; // 成功
+                    form.value = {};
+                } catch (e) {
+                    alert("Error processing request: " + e.message);
+                } finally {
+                    processing.value = false;
+                }
+            };
+
+            onMounted(fetchDoctors);
+            return { doctors, loading, selectedCity, fetchDoctors, showModal, currentDoc, openBooking, form, step, goToPayment, confirmBooking, processing };
+        }
+    }).mount('#app');
+</script>
 </body>
 
 </html>
+
 
