@@ -7,3 +7,4 @@ python-dotenv
 passlib
 bcrypt==4.0.1
 email-validator
+psycopg2-binary  # 新增：PostgreSQL 驱动
